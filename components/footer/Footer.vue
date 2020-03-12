@@ -57,29 +57,28 @@ export default {
     async getUserInfo(e) {
       const {
         user,
-        intercomToken,
         displayName,
         email,
         wallet,
         cosmosWallet,
         isAuthCore,
       } = e;
-      if (this.$intercom) {
-        const opt = { LikeCoin: true };
-        if (user) opt.user_id = user;
-        if (intercomToken) opt.user_hash = intercomToken;
-        if (displayName) opt.name = displayName;
-        if (email) opt.email = email;
+      if (window.$crisp) {
+        // if (user) opt.user_id = user;
+        const { $crisp } = window;
+        if (displayName) $crisp.push(['set', 'user:nickname', [displayName]]);
+        if (email) $crisp.push(['set', 'user:email', email]);
+        const opt = [['LikeCoin', true]];
         if (wallet) {
-          opt.wallet = wallet;
+          opt.push(['wallet', wallet]);
         }
         if (cosmosWallet) {
-          opt.cosmos_wallet = cosmosWallet;
+          opt.push(['cosmos_wallet', cosmosWallet]);
         }
         if (isAuthCore) {
-          opt.binded_authcore = true;
+          opt.push(['binded_authcore', true]);
         }
-        this.$intercom.update(opt);
+        window.$crisp.push(['set', 'session:data', [opt]]);
       }
       if (user) {
         if (this.$sentry) {
@@ -95,69 +94,65 @@ export default {
       }
     },
     getCurrentLocale(language) {
-      if (this.$intercom) {
-        this.$intercom.update({ language });
+      if (window.$crisp) {
+        window.$crisp.push(['set', 'session:data', [[['language', language]]]]);
       }
     },
     getInfoMsg(message) {
-      if (this.getInfoIsError && this.$intercom) {
-        this.$intercom.update({ lastError: message });
-        this.$intercom.trackEvent('likecoin-store_error', { message });
+      if (this.getInfoIsError && window.$crisp) {
+        window.$crisp.push(['set', 'session:data', [[['lastError', message]]]]);
+        window.$crisp.push(['set', 'session:event', [[['likecoin-store_error', message]]]]);
       }
     },
     getAuthCoreOAuthFactors(factors) {
-      if (this.$intercom && factors) {
+      if (window.$crisp && factors) {
+        const opt = [];
         const services = factors.map(f => f.service);
-        const opt = services.reduce((accumOpt, service) => {
+        services.forEach((service) => {
           // eslint-disable-next-line no-param-reassign
-          if (service) accumOpt[`binded_${service.toLowerCase()}`] = true;
-          return accumOpt;
-        }, {});
-        this.$intercom.update(opt);
+          if (service) opt.push([`binded_${service.toLowerCase()}`, true]);
+        });
+        window.$crisp.push(['set', 'session:data', [opt]]);
       }
     },
     getUserLikeCoinAmountInBigNumber(amount) {
-      if (this.$intercom && amount) {
-        const opt = { LIKE: amount.toFixed(4) };
-        this.$intercom.update(opt);
+      if (window.$crisp && amount) {
+        window.$crisp.push(['set', 'session:data', [[['LIKE', amount.toFixed(4)]]]]);
       }
     },
   },
   async mounted() {
     const {
       user,
-      intercomToken,
       displayName,
       email,
       wallet,
       cosmosWallet,
       isAuthCore,
     } = this.getUserInfo;
-    if (this.$intercom) {
+    if (window.$crisp) {
+      // if (user) opt.user_id = user;
+      const { $crisp } = window;
       const language = this.getCurrentLocale;
-      const opt = { LikeCoin: true };
-      if (user) opt.user_id = user;
-      if (intercomToken) opt.user_hash = intercomToken;
-      if (displayName) opt.name = displayName;
-      if (email) opt.email = email;
-      if (language) opt.language = language;
+      if (displayName) $crisp.push(['set', 'user:nickname', [displayName]]);
+      if (email) $crisp.push(['set', 'user:email', email]);
+      const opt = [['LikeCoin', true], ['language', language]];
       if (wallet) {
-        opt.wallet = wallet;
+        opt.push(['wallet', wallet]);
       }
       if (cosmosWallet) {
-        opt.cosmos_wallet = cosmosWallet;
+        opt.push(['cosmos_wallet', cosmosWallet]);
       }
       if (isAuthCore) {
-        opt.binded_authcore = true;
+        opt.push(['binded_authcore', true]);
       }
       const factors = this.getAuthCoreOAuthFactors || [];
       const services = factors.map(f => f.service);
-      const socialOpt = services.reduce((accumOpt, service) => {
+      services.forEach((service) => {
         // eslint-disable-next-line no-param-reassign
-        if (service) accumOpt[`binded_${service.toLowerCase()}`] = true;
-        return accumOpt;
-      }, {});
-      this.$intercom.boot({ ...opt, ...socialOpt });
+        if (service) opt.push([`binded_${service.toLowerCase()}`, true]);
+      });
+      window.$crisp.push(['set', 'session:data', [opt]]);
     }
     if (user) {
       if (this.$sentry) {
